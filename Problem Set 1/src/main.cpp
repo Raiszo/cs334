@@ -1,5 +1,3 @@
-//Udacity HW1 Solution
-
 #include <iostream>
 #include "timer.h"
 #include "utils.h"

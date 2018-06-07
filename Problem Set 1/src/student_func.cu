@@ -47,6 +47,13 @@ void rgba_to_greyscale(const uchar4* const rgbaImage,
   //applying the formula: output = .299f * R + .587f * G + .114f * B;
   //Note: We will be ignoring the alpha channel for this conversion
 
+	int ix = threadIdx.x + blockIdx.x * blockDim.x;
+	int iy = threadIdx.y + blockIdx.y * blockDim.y;
+	int index = numRows * iy + ix;
+
+	uchar4 rgba = rgbaImage[index];
+	float I = .299f *rgba.x + .587f *rgba.y + .114f *rgba.z;
+	greyImage[index] = I;
 	
   //First create a mapping from the 2D block and grid locations
   //to an absolute 2D location in the image, then use that to
@@ -58,8 +65,9 @@ void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_r
 {
   //You must fill in the correct sizes for the blockSize and gridSize
   //currently only one block with one thread is being launched
-  const dim3 blockSize(1, 1, 1);  //TODO
-  const dim3 gridSize( 1, 1, 1);  //TODO
+	const int size=128;
+  const dim3 blockSize((int) numRows/size + 1, (int) numCols/size + 1, 1);  //TODO
+  const dim3 gridSize(size, size, 3);  //TODO, always 3 channels
   rgba_to_greyscale<<<gridSize, blockSize>>>(d_rgbaImage, d_greyImage, numRows, numCols);
   
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
