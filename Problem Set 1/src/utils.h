@@ -2,6 +2,7 @@
 #define UTILS_H__
 
 #include <iostream>
+#include <algorithm>
 #include <iomanip>
 #include <cuda.h>
 #include <cuda_runtime.h>
