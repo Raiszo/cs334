@@ -1,11 +1,11 @@
 #include <stdio.h>
 
 __global__
-void cube(float * d_out, float * d_in){
+void cube(float * d_out, float * d_in, int size){
 	// Todo: Fill in this function
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
 	int iy = threadIdx.y + blockIdx.y * blockDim.y;
-	int index = gridDim.x * blockDim.x * iy + ix;
+	int index = size * iy + ix;
 	float f = d_in[index];
 	d_out[index] = f*f*f;
 	
@@ -13,7 +13,7 @@ void cube(float * d_out, float * d_in){
 
 int main(int argc, char ** argv) {
 	// Gonna try a 2d grid size and block size :D, [5,5]
-	const int ARRAY_SIZE = 5;
+	const int ARRAY_SIZE = 7;
 	const int ARRAY_BYTES = ARRAY_SIZE * ARRAY_SIZE * sizeof(float);
 
 	// generate the input array on the host
@@ -40,7 +40,7 @@ int main(int argc, char ** argv) {
 	const int size = 2;
 	const dim3 blockSize(ARRAY_SIZE/size + 1, ARRAY_SIZE/size + 1, 1);
 	const dim3 gridSize(size, size, 1);
-	cube<<<gridSize, blockSize>>>(d_out, d_in);
+	cube<<<gridSize, blockSize>>>(d_out, d_in, ARRAY_SIZE);
 
 	// copy back the result array to the CPU
 	cudaMemcpy(h_out, d_out, ARRAY_BYTES, cudaMemcpyDeviceToHost);
