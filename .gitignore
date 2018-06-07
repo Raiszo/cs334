@@ -1,3 +1,10 @@
+# emacs files
+*~
+\#*\#
+.\#*
+/server/
+
+
 # Ignore cmake files
 CMakeFiles
 
