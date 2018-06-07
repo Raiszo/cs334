@@ -11,7 +11,8 @@ project(cs344)
 find_package(OpenCV REQUIRED)
 find_package(CUDA REQUIRED)
 
-link_libraries(${OpenCV_LIBS} )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+target_link_libraries(cs334 ${OpenCV_LIBS} )
 
 set (EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/")
 
