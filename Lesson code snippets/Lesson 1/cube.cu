@@ -1,24 +1,29 @@
 #include <stdio.h>
 
-__global__ void cube(float * d_out, float * d_in){
+__global__
+void cube(float * d_out, float * d_in){
 	// Todo: Fill in this function
-	int idx = threadIdx.x;
-	float f = d_in[idx];
-	d_out[idx] = f*f*f;
+	int ix = threadIdx.x + blockIdx.x * blockDim.x;
+	int iy = threadIdx.y + blockIdx.y * blockDim.y;
+	int index = gridDim.x * blockDim.x * iy + ix;
+	float f = d_in[index];
+	d_out[index] = f*f*f;
 	
 }
 
 int main(int argc, char ** argv) {
-	const int ARRAY_SIZE = 96;
-	const int ARRAY_BYTES = ARRAY_SIZE * sizeof(float);
+	// Gonna try a 2d grid size and block size :D, [5,5]
+	const int ARRAY_SIZE = 5;
+	const int ARRAY_BYTES = ARRAY_SIZE * ARRAY_SIZE * sizeof(float);
 
 	// generate the input array on the host
-	float h_in[ARRAY_SIZE];
+	float h_in[ARRAY_SIZE][ARRAY_SIZE];
 	for (int i = 0; i < ARRAY_SIZE; i++) {
-		h_in[i] = float(i);
-		
+		for (int j = 0; j < ARRAY_SIZE; j++) {
+			h_in[i][j] = float(ARRAY_SIZE * i + j);
+		}
 	}
-	float h_out[ARRAY_SIZE];
+	float h_out[ARRAY_SIZE][ARRAY_SIZE];
 
 	// declare GPU memory pointers
 	float * d_in;
@@ -32,16 +37,21 @@ int main(int argc, char ** argv) {
 	cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice);
 
 	// launch the kernel
-	cube<<<1, ARRAY_SIZE>>>(d_out, d_in);
+	const int size = 2;
+	const dim3 blockSize(ARRAY_SIZE/size + 1, ARRAY_SIZE/size + 1, 1);
+	const dim3 gridSize(size, size, 1);
+	cube<<<gridSize, blockSize>>>(d_out, d_in);
 
 	// copy back the result array to the CPU
 	cudaMemcpy(h_out, d_out, ARRAY_BYTES, cudaMemcpyDeviceToHost);
 
 	// print out the resulting array
 	for (int i =0; i < ARRAY_SIZE; i++) {
-		printf("%f", h_out[i]);
-		printf(((i % 4) != 3) ? "\t" : "\n");
-		
+		for (int j = 0; j < ARRAY_SIZE; j++) {
+			printf("%f", h_out[i][j]);
+			printf("\t");
+		}
+		printf("\n");
 	}
 
 	cudaFree(d_in);
