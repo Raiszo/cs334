@@ -3,8 +3,10 @@ project( DisplayImage )
 
 # Important step for Windows users
 # if (WIN32)
-# 	SET("OpenCV_DIR" "C:/opencv_3.0/opencv/build/x64/vc15/bin")
+# 	SET("OpenCV_DIR" "C:/opencv_3.0/opencv/build")
 # endif(WIN32)
+
+set (EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/")
 
 find_package( OpenCV REQUIRED )
 
