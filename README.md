@@ -17,5 +17,6 @@ msbuild .\HW{n}.sln
 ```
 
 Remember `msbuild /t:Build /p:Configuration=Release .\HW{n}.sln` for Release :D
+else you can do it using cmake :P `cmake --build .` and for release `cmake --build . --config Release`
 
 ### Enjoy

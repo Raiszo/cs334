@@ -1,14 +1,15 @@
-#include <stdio.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+
 using namespace cv;
 using namespace std;
-int main(int argc, char** argv )
-{
+
+int main(int argc, char** argv ) {
+	cout << "Hello" << endl;
 	if ( argc != 2 )
 		{
-			printf("usage: DisplayImage.out <Image_Path>\n");
+			cout <<"usage: DisplayImage.out <Image_Path>\n" << endl;
 			return -1;
 			    
 		}
@@ -16,7 +17,7 @@ int main(int argc, char** argv )
 	image = imread( argv[1], CV_LOAD_IMAGE_COLOR );
 	if ( !image.data )
 		{
-			printf("No image data \n");
+			cout << "No image data \n" << endl;
 			return -1;
 			    
 		}
