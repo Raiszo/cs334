@@ -8,11 +8,11 @@
 + Install cmake and add to PATH
 
 ## To be able to build cuda in win10:
-Use cmake and then msbuild, do not forget to set up PATH properly
+Use cmake and then msbuild, do not forget to set up PATH properly, point to VS15 win64, compare with your OpenCV env variable, coz it might crash if unset
 ```bash
 cd "Problem Set {n}"
 mkdir build && cd build
-cmake ..
+cmake -G "Visual Studio 15 2017 win64" ..
 msbuild .\HW{n}.sln
 ```
 
