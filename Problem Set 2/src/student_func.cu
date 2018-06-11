@@ -152,6 +152,14 @@ void separateChannels(const uchar4* const inputImageRGBA,
   // {
   //     return;
   // }
+	int ix = threadIdx.x + blockIdx.x * blockDim.x;
+	int iy = threadIdx.y + blockIdx.y * blockDim.y;
+	int index = numRows * iy + ix;
+	
+	uchar4 rgba = rgbaImage[index];
+	redChannel[index] = rgba.x;
+	greenChannel[index] = rgba.y;
+	blueChannel[index] = rgba.z;
 }
 
 //This kernel takes in three color channels and recombines them
@@ -221,14 +229,19 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
                         const int filterWidth)
 {
   //TODO: Set reasonable block size (i.e., number of threads per block)
-  const dim3 blockSize;
+	const int size = 128;
+  const dim3 blockSize((int) numRow/size + 1, (int) numCols/size + 1, 1);
 
   //TODO:
   //Compute correct grid size (i.e., number of blocks per kernel launch)
   //from the image size and and block size.
-  const dim3 gridSize;
+  const dim3 gridSize(size, size, 1);
 
   //TODO: Launch a kernel for separating the RGBA image into different color channels
+	separateChannels<<<gridSize, blockSize >>>(d_inputImageRGBA, numRows, numCols,
+																						 d_redChannel,
+																						 d_greenChannel,
+																						 d_blueChannel)
 
   // Call cudaDeviceSynchronize(), then call checkCudaErrors() immediately after
   // launching your kernel to make sure that you didn't make any mistakes.

@@ -67,7 +67,7 @@ void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_r
   //currently only one block with one thread is being launched
 	const int size=128;
   const dim3 blockSize((int) numRows/size + 1, (int) numCols/size + 1, 1);  //TODO
-  const dim3 gridSize(size, size, 3);  //TODO, always 3 channels
+  const dim3 gridSize(size, size, 1);
   rgba_to_greyscale<<<gridSize, blockSize>>>(d_rgbaImage, d_greyImage, numRows, numCols);
   
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
