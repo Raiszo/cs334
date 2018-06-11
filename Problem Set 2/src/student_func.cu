@@ -113,17 +113,18 @@ void gaussian_blur(const unsigned char* const inputChannel,
 	int index = numCols * iy + ix;
 
 	float value = 0.f;
-	int abs_x, abs_y, to_filter_index;
-	for (int r = -filterWidth; r <= filterWidth/2; r++) {
-		for (int c = -filterWidth; c <= filterWidth/2; c++) {
+	int abs_x, abs_y, to_filter_index, filter_index;
+	for (int r = -filterWidth/2; r <= filterWidth/2; r++) {
+		for (int c = -filterWidth/2; c <= filterWidth/2; c++) {
 			abs_x = ix + r;
 			abs_y = iy + c;
 			if (abs_x >= numCols || abs_x < 0 ||
 					abs_y >= numRows || abs_y < 0) {
-				value += 0;
+				value += 0.f;
 			} else {
 				to_filter_index = numCols * abs_y + abs_x;
-				value += filter[r*filterWidth + c] * inputChannel[to_filter_index];
+				filter_index = (c + filterWidth/2) * filterWidth + (r + filterWidth/2);
+				value += filter[filter_index] * inputChannel[to_filter_index];
 			}
 		}
 	}
@@ -177,6 +178,9 @@ void separateChannels(const uchar4* const inputImageRGBA,
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
 	int iy = threadIdx.y + blockIdx.y * blockDim.y;
 	int index = numRows * iy + ix;
+
+	if (ix >= numCols || iy >= numRows)
+		return;
 	
 	uchar4 rgba = inputImageRGBA[index];
 	redChannel[index] = rgba.x;
