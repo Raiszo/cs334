@@ -114,16 +114,16 @@ void gaussian_blur(const unsigned char* const inputChannel,
 
 	float value = 0.f;
 	int abs_x, abs_y, to_filter_index, filter_index;
-	for (int r = -filterWidth/2; r <= filterWidth/2; r++) {
-		for (int c = -filterWidth/2; c <= filterWidth/2; c++) {
-			abs_x = ix + r;
-			abs_y = iy + c;
+	for (int r = -filterWidth/2; r <= filterWidth/2; ++r) {
+		for (int c = -filterWidth/2; c <= filterWidth/2; ++c) {
+			abs_x = ix + c;
+			abs_y = iy + r;
 			if (abs_x >= numCols || abs_x < 0 ||
 					abs_y >= numRows || abs_y < 0) {
 				value += 0.f;
 			} else {
 				to_filter_index = numCols * abs_y + abs_x;
-				filter_index = (c + filterWidth/2) * filterWidth + (r + filterWidth/2);
+				filter_index = (r + filterWidth/2) * filterWidth + (c + filterWidth/2);
 				value += filter[filter_index] * inputChannel[to_filter_index];
 			}
 		}
@@ -177,7 +177,7 @@ void separateChannels(const uchar4* const inputImageRGBA,
   // }
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
 	int iy = threadIdx.y + blockIdx.y * blockDim.y;
-	int index = numRows * iy + ix;
+	int index = numCols * iy + ix;
 
 	if (ix >= numCols || iy >= numRows)
 		return;
@@ -232,6 +232,10 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
   checkCudaErrors(cudaMalloc(&d_green, sizeof(unsigned char) * numRowsImage * numColsImage));
   checkCudaErrors(cudaMalloc(&d_blue,  sizeof(unsigned char) * numRowsImage * numColsImage));
 
+	checkCudaErrors(cudaMemset(d_red, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
+	checkCudaErrors(cudaMemset(d_green, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
+	checkCudaErrors(cudaMemset(d_blue, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
+
   //TODO:
   //Allocate memory for the filter on the GPU
   //Use the pointer d_filter that we have already declared for you
@@ -240,12 +244,12 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
   //be able to tell if anything goes wrong
   //IMPORTANT: Notice that we pass a pointer to a pointer to cudaMalloc
 
-	checkCudaErrors(cudaMalloc(&d_filter, sizeof(unsigned char) * filterWidth * filterWidth));
+	checkCudaErrors(cudaMalloc(&d_filter, sizeof(float) * filterWidth * filterWidth));
   //TODO:
   //Copy the filter on the host (h_filter) to the memory you just allocated
   //on the GPU.  cudaMemcpy(dst, src, numBytes, cudaMemcpyHostToDevice);
   //Remember to use checkCudaErrors!
-	checkCudaErrors(cudaMemcpy(d_filter, h_filter, sizeof(unsigned char) * filterWidth * filterWidth, cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(d_filter, h_filter, sizeof(float) * filterWidth * filterWidth, cudaMemcpyHostToDevice));
 
 }
 
@@ -257,8 +261,8 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
                         const int filterWidth)
 {
   //TODO: Set reasonable block size (i.e., number of threads per block)
-	const int size = 128;
-  const dim3 blockSize((int) numRows/size + 1, (int) numCols/size + 1, 1);
+	const int size = 64;
+  const dim3 blockSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
 
   //TODO:
   //Compute correct grid size (i.e., number of blocks per kernel launch)
@@ -282,7 +286,7 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
 	gaussian_blur<<< gridSize, blockSize >>>(d_green, d_greenBlurred,
 																					 numRows, numCols,
 																					 d_filter, filterWidth);
-	gaussian_blur<<< gridSize, blockSize >>>(d_blue, d_blue,
+	gaussian_blur<<< gridSize, blockSize >>>(d_blue, d_blueBlurred,
 																					 numRows, numCols,
 																					 d_filter, filterWidth);
   // Again, call cudaDeviceSynchronize(), then call checkCudaErrors() immediately after
