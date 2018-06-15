@@ -38,8 +38,8 @@ int main(int argc, char ** argv) {
 
 	// launch the kernel
 	const int size = 2;
-	const dim3 blockSize(ARRAY_SIZE/size + 1, ARRAY_SIZE/size + 1, 1);
-	const dim3 gridSize(size, size, 1);
+	const dim3 gridSize(ARRAY_SIZE/size + 1, ARRAY_SIZE/size + 1, 1);
+	const dim3 blockSize(size, size, 1);
 	cube<<<gridSize, blockSize>>>(d_out, d_in, ARRAY_SIZE);
 
 	// copy back the result array to the CPU
