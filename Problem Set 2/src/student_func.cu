@@ -134,7 +134,7 @@ void gaussian_blur(const unsigned char* const inputChannel,
 		for (int r = -radius; r <= radius; ++r) {
 			for (int c = -radius; c <= radius; ++c) {
 				simage_index = (threadIdx.y + r) * blockDim.x + threadIdx.x + c;
-				filter_index = (r + radius) * 2 * radius + (c + radius);
+				filter_index = (r + radius) * filterWidth + (c + radius);
 
 				value += filter[filter_index] * static_cast<float>(simage[simage_index]);
 			}
