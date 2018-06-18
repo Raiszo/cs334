@@ -140,8 +140,7 @@ void gaussian_blur(const unsigned char* const inputChannel,
 			}
 		}
 
-		// a saturation may cause the pixels to go black D:
-		outputChannel[gindex] = value; // > 255 ? 255 : value;
+		outputChannel[gindex] = value;
 	}
 
   // TODO
@@ -240,14 +239,15 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
 {
 
   //allocate memory for the three different channels
-  //original
-  checkCudaErrors(cudaMalloc(&d_red,   sizeof(unsigned char) * numRowsImage * numColsImage));
-  checkCudaErrors(cudaMalloc(&d_green, sizeof(unsigned char) * numRowsImage * numColsImage));
-  checkCudaErrors(cudaMalloc(&d_blue,  sizeof(unsigned char) * numRowsImage * numColsImage));
+	const int numPixels = sizeof(unsigned char) * (int) numRowsImage * (int) numColsImage;
 
-	checkCudaErrors(cudaMemset(d_red, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
-	checkCudaErrors(cudaMemset(d_green, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
-	checkCudaErrors(cudaMemset(d_blue, 0, sizeof(unsigned char) * numRowsImage * numColsImage));
+  checkCudaErrors(cudaMalloc(&d_red,   numPixels));
+  checkCudaErrors(cudaMalloc(&d_green, numPixels));
+  checkCudaErrors(cudaMalloc(&d_blue,  numPixels));
+
+	checkCudaErrors(cudaMemset(d_red, 0, numPixels));
+	checkCudaErrors(cudaMemset(d_green, 0, numPixels));
+	checkCudaErrors(cudaMemset(d_blue, 0, numPixels));
 
   //TODO:
   //Allocate memory for the filter on the GPU
@@ -278,16 +278,15 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
 	const int size = 32;
   const dim3 blockSize(size, size, 1);
 
-	// printf("%d", filterWidth);
-	// printf("\t");
-	// printf("%d", radius);
-	// printf("\n");
   //TODO:
   //Compute correct grid size (i.e., number of blocks per kernel l
   //from the image size and and block size.
-	// Use a greater number of blocks to have overlapping blocks
-  const dim3 conv_gridSize((int) numCols/(size - 2*radius) + 1, (int) numRows/(size - 2*radius) + 1, 1);
+	// No need to launch overlapping blocks when not doing a convolution
 	const dim3 gridSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
+	// Use a greater number of blocks to have overlapping blocks
+  const dim3 conv_gridSize((int) numCols/(size - 2*radius) + 1,
+													 (int) numRows/(size - 2*radius) + 1,
+													 1);
 	
   //TODO: Launch a kernel for separating the RGBA image into different color channels
 	separateChannels<<< gridSize, blockSize >>>(d_inputImageRGBA,
@@ -302,6 +301,7 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
 
   //TODO: Call your convolution kernel here 3 times, once for each color channel.
 	int shared_size = sizeof(unsigned char) * size * size;
+	
 	gaussian_blur<<< conv_gridSize, blockSize, shared_size >>>(d_red, d_redBlurred,
 																					 (int) numRows, (int) numCols,
 																					 d_filter, filterWidth);
