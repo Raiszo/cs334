@@ -20,3 +20,8 @@ Remember `msbuild /t:Build /p:Configuration=Release .\HW{n}.sln` for Release :D
 else you can do it using cmake :P `cmake --build .` and for release `cmake --build . --config Release`
 
 ### Enjoy
+
+---
+
+## Quick Notes
++ **Problem Set 2** For using dynamic size shared variables when doing convolutions, refer to the example provided [here](http://www.nvidia.com/content/nvision2008/tech_presentations/Game_Developer_Track/NVISION08-Image_Processing_and_Video_with_CUDA.pdf)
