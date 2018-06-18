@@ -134,14 +134,14 @@ void gaussian_blur(const unsigned char* const inputChannel,
 		for (int r = -radius; r <= radius; ++r) {
 			for (int c = -radius; c <= radius; ++c) {
 				simage_index = (threadIdx.y + r) * blockDim.x + threadIdx.x + c;
-				filter_index = (r + radius) * radius + (c + radius);
+				filter_index = (r + radius) * 2 * radius + (c + radius);
 
 				value += filter[filter_index] * static_cast<float>(simage[simage_index]);
 			}
 		}
 
-		// a over saturation may cause the pixels to go completely black D:
-		outputChannel[gindex] = value > 255 ? 255 : value;
+		// a saturation may cause the pixels to go black D:
+		outputChannel[gindex] = value; // > 255 ? 255 : value;
 	}
 
   // TODO
@@ -278,6 +278,10 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
 	const int size = 32;
   const dim3 blockSize(size, size, 1);
 
+	// printf("%d", filterWidth);
+	// printf("\t");
+	// printf("%d", radius);
+	// printf("\n");
   //TODO:
   //Compute correct grid size (i.e., number of blocks per kernel l
   //from the image size and and block size.
