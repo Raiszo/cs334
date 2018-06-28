@@ -81,6 +81,13 @@
 
 #include "utils.h"
 
+__global__
+void reduce_min(const float* const d_logLuminance
+								float &min_logLum)
+{
+	
+}
+
 void your_histogram_and_prefixsum(const float* const d_logLuminance,
                                   unsigned int* const d_cdf,
                                   float &min_logLum,
@@ -89,6 +96,12 @@ void your_histogram_and_prefixsum(const float* const d_logLuminance,
                                   const size_t numCols,
                                   const size_t numBins)
 {
+	const int size = 32;
+	const dim3 blockSize(size, size, 1);
+
+	const dim3 gridSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
+
+	
   //TODO
   /*Here are the steps you need to implement
     1) find the minimum and maximum value in the input logLuminance channel
