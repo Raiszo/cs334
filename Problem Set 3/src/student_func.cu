@@ -82,13 +82,67 @@
 #include "utils.h"
 
 __global__
-void reduce_min(const float* const d_logLuminance
+void reduce_min(float* d_logLuminance,
+								const int numRows, const int numCols,
 								float &min_logLum)
 {
+	const int2 thread_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
+                                        blockIdx.y * blockDim.y + threadIdx.y);
+	const int numPixels = numRows * numCols;
+	const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
+
+	if (thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
+		return;
 	
+	for (unsigned int s = numPixels / 2 + 1; s > 0; s >>= 1) {
+		if (index < s) {
+			d_logLuminance[index] = d_logLuminance[index] <= d_logLuminance[index + s]
+				? d_logLuminance[index]
+				: d_logLuminance[index + s];
+					        
+		}
+		__syncthreads();        // make sure all adds at one stage are done!
+			    
+	}
+
+	// only thread 0 writes result for this block back to global mem
+	if (index == 0) {
+		min_logLum = d_logLuminance[index];
+	}
 }
 
-void your_histogram_and_prefixsum(const float* const d_logLuminance,
+__global__
+void reduce_max(float* d_logLuminance,
+								const int numRows, const int numCols,
+								float &max_logLum)
+{
+	const int2 thread_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
+                                        blockIdx.y * blockDim.y + threadIdx.y);
+	const int numPixels = numRows * numCols;
+	const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
+
+	if (thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
+		return;
+	
+	for (unsigned int s = numPixels / 2 + 1; s > 0; s >>= 1) {
+		if (index < s) {
+			d_logLuminance[index] = d_logLuminance[index] >= d_logLuminance[index + s]
+				? d_logLuminance[index]
+				: d_logLuminance[index + s];
+					        
+		}
+		__syncthreads();        // make sure all adds at one stage are done!
+			    
+	}
+
+	// only thread 0 writes result for this block back to global mem
+	if (index == 0) {
+		max_logLum = d_logLuminance[index];
+	}
+}
+
+// void your_histogram_and_prefixsum(const float* const d_logLuminance,
+void your_histogram_and_prefixsum(float* d_logLuminance,
                                   unsigned int* const d_cdf,
                                   float &min_logLum,
                                   float &max_logLum,
@@ -100,6 +154,11 @@ void your_histogram_and_prefixsum(const float* const d_logLuminance,
 	const dim3 blockSize(size, size, 1);
 
 	const dim3 gridSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
+
+	reduce_min<<< gridSize, blockSize >>>(d_logLuminance,
+																				numRows, numCols,
+																				min_logLum);
+	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
 	
   //TODO

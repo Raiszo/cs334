@@ -1,17 +1,22 @@
-############################################################################
-# <summary> CMakeLists.txt for OpenCV and CUDA. </summary>
-# <date>    2012-02-07          </date>
-# <author>  Quan Tran Minh. edit by Johannes Kast, Michael Sarahan </author>
-# <email>   quantm@unist.ac.kr  kast.jo@googlemail.com msarahan@gmail.com</email>
-############################################################################
-# minimum required cmake version
-cmake_minimum_required(VERSION 2.8)
-find_package(CUDA QUIET REQUIRED)
+cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+project(HW3)
 
-SET (compare_files compare.cpp)
+# Important step for Windows users
+if (WIN32)
+	SET("OpenCV_DIR" "C:/opencv_3.0/opencv/build/")
+endif(WIN32)
 
-file( GLOB  hdr *.hpp *.h )
-file( GLOB  cu  *.cu)
-SET (HW3_files main.cpp loadSaveImage.cpp reference_calc.cpp compare.cpp)
-    
-CUDA_ADD_EXECUTABLE(HW3 ${HW3_files} ${hdr} ${cu})
+find_package(OpenCV REQUIRED)
+find_package(CUDA REQUIRED)
+
+set (EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/")
+
+
+
+if (CUDA_FOUND AND OpenCV_FOUND)
+
+	add_subdirectory(src)
+	
+else(CUDA_FOUND AND OpenCV_FOUND)
+  message("CUDA or OpenCV are not installed on this system.")
+endif()
