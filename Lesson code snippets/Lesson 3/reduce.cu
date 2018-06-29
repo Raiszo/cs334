@@ -10,29 +10,30 @@ void global_reduce_max(float *d_out,
 	const int2 thread_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
                                         blockIdx.y * blockDim.y + threadIdx.y);
 	const int totalThreads = gridDim.x * blockDim.x * gridDim.y * blockDim.y;
-	const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
+	// const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
+	const int absIndex = thread_2D_pos.y * gridDim.x*blockDim.x + thread_2D_pos.x;
 
 	if (thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
-		d_in[index] = -1.0f;
+		d_in[absIndex] = -1.0f;
 		
 	for (unsigned int s = totalThreads / 2; s > 0; s >>= 1) {
-		if (index < s)
-			d_in[index] = max(d_in[index], d_in[index + s]);
+		if (absIndex < s)
+			d_in[absIndex] = max(d_in[absIndex], d_in[absIndex + s]);
 		
 		__syncthreads();
 			    
 	}
 
 	// only thread 0 writes result for this block back to global mem
-	if (index == 0) {
-		d_out[index] = d_in[index];
+	if (absIndex == 0) {
+		d_out[absIndex] = d_in[absIndex];
 	}
 }
 
 int main(int argc, char **argv)
 {
 	// TODO, use dynamic array :'v
-	const int ARRAY_SIZE = 5;
+	const int ARRAY_SIZE = 13;
 	const int ARRAY_BYTES = ARRAY_SIZE * ARRAY_SIZE * sizeof(float);
 
 	// generate the input array on the host
