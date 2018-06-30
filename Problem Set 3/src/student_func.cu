@@ -82,62 +82,64 @@
 #include "utils.h"
 
 __global__
-void reduce_min(float* d_logLuminance,
-								const int numRows, const int numCols,
-								float &min_logLum)
+void shared_reduce_min(float *d_in,
+											 const int numRows, const int numCols,
+											 float *d_out,
+											 )
 {
-	const int2 thread_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
-                                        blockIdx.y * blockDim.y + threadIdx.y);
-	const int numPixels = numRows * numCols;
-	const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
-
-	if (thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
-		return;
+	extern __shared__ float simg[];
+	const int2 image_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
+																			 blockIdx.y * blockDim.y + threadIdx.y);
+	const int index = image_2D_pos.x + numCols * image_2D_pos.y;
+	const int bid = threadIdx.x + blockDim.x * threadIdx.y;
 	
-	for (unsigned int s = numPixels / 2 + 1; s > 0; s >>= 1) {
-		if (index < s) {
-			d_logLuminance[index] = d_logLuminance[index] <= d_logLuminance[index + s]
-				? d_logLuminance[index]
-				: d_logLuminance[index + s];
-					        
-		}
-		__syncthreads();        // make sure all adds at one stage are done!
-			    
+	if (image_2D_pos.x >= numCols || image_2D_pos.y >= numRows)
+		simg[bid] = 1.0f;
+	else
+		simg[bid] = d_in[index];
+	
+	__syncthreads();
+
+	for (unsigned int s = blockDim.x*blockDim.y / 2; s > 0; s >>= 1) {
+		if (bid < s)
+			simg[bid] = min(simg[bid], simg[bid + s]);
+		
+		__syncthreads();
 	}
 
-	// only thread 0 writes result for this block back to global mem
-	if (index == 0) {
-		min_logLum = d_logLuminance[index];
+	if (bid == 0) {
+		d_out[blockIdx.x + gridDim.x * blockIdx.y] = simg[0];
 	}
 }
 
 __global__
-void reduce_max(float* d_logLuminance,
-								const int numRows, const int numCols,
-								float &max_logLum)
+void shared_reduce_max(float *d_in,
+											 const int numRows, const int numCols,
+											 float *d_out,
+											 )
 {
-	const int2 thread_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
-                                        blockIdx.y * blockDim.y + threadIdx.y);
-	const int numPixels = numRows * numCols;
-	const int index = thread_2D_pos.y * numCols + thread_2D_pos.x;
-
-	if (thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
-		return;
+	extern __shared__ float simg[];
+	const int2 image_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
+																			 blockIdx.y * blockDim.y + threadIdx.y);
+	const int index = image_2D_pos.x + numCols * image_2D_pos.y;
+	const int bid = threadIdx.x + blockDim.x * threadIdx.y;
 	
-	for (unsigned int s = numPixels / 2 + 1; s > 0; s >>= 1) {
-		if (index < s) {
-			d_logLuminance[index] = d_logLuminance[index] >= d_logLuminance[index + s]
-				? d_logLuminance[index]
-				: d_logLuminance[index + s];
-					        
-		}
-		__syncthreads();        // make sure all adds at one stage are done!
-			    
+	if (image_2D_pos.x >= numCols || image_2D_pos.y >= numRows)
+		simg[bid] = -1.0f;
+	else
+		simg[bid] = d_in[index];
+	
+	__syncthreads();
+
+	for (unsigned int s = blockDim.x*blockDim.y / 2; s > 0; s >>= 1) {
+		if (bid < s)
+			simg[bid] = max(simg[bid], simg[bid + s]);
+		
+		__syncthreads();
 	}
 
-	// only thread 0 writes result for this block back to global mem
-	if (index == 0) {
-		max_logLum = d_logLuminance[index];
+	if (bid == 0) {
+		d_out[blockIdx.x + gridDim.x * blockIdx.y] = simg[0];
 	}
 }
 
@@ -150,17 +152,40 @@ void your_histogram_and_prefixsum(float* d_logLuminance,
                                   const size_t numCols,
                                   const size_t numBins)
 {
+	float * d_inter, * d_min, * d_max;
 	const int size = 32;
 	const dim3 blockSize(size, size, 1);
-
 	const dim3 gridSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
+	int shared_size = sizeof(float) * size * size;
+	
+	cudaMalloc((void **) &d_inter, (numCols/size+1) * (numRows/size+1) * sizeof(float));
+	cudaMalloc((void **) &d_min, sizeof(float));
+	cudaMalloc((void **) &d_max, sizeof(float));
 
-	reduce_min<<< gridSize, blockSize >>>(d_logLuminance,
-																				numRows, numCols,
-																				min_logLum);
+	shared_reduce_min<<< gridSize, blockSize >>>(d_logLuminance,
+																							 numRows, numCols,
+																							 d_inter);
+	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+	
+	shared_reduce_min<<< gridSize, blockSize >>>(d_inter,
+																							 numRows/size+1, numCols/size+1,
+																							 d_min);
 	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
+	// clean d_inter to use it again
+	checkCudaErrors(cudaMemset(*d_inter, 0, (numCols/size+1) * (numRows/size+1) * sizeof(float));
 	
+	shared_reduce_max<<< gridSize, blockSize >>>(d_logLuminance,
+																							 numRows, numCols,
+																							 d_inter);
+	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+	
+	shared_reduce_max<<< gridSize, blockSize >>>(d_inter,
+																							 numRows/size+1, numCols/size+1,
+																							 d_max);
+	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+
+									
   //TODO
   /*Here are the steps you need to implement
     1) find the minimum and maximum value in the input logLuminance channel
