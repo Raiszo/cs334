@@ -82,10 +82,9 @@
 #include "utils.h"
 
 __global__
-void shared_reduce_min(float *d_in,
+void reduce_min(float *d_in,
 											 const int numRows, const int numCols,
-											 float *d_out,
-											 )
+											 float *d_out)
 {
 	extern __shared__ float simg[];
 	const int2 image_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
@@ -113,10 +112,9 @@ void shared_reduce_min(float *d_in,
 }
 
 __global__
-void shared_reduce_max(float *d_in,
+void reduce_max(float *d_in,
 											 const int numRows, const int numCols,
-											 float *d_out,
-											 )
+											 float *d_out)
 {
 	extern __shared__ float simg[];
 	const int2 image_2D_pos = make_int2( blockIdx.x * blockDim.x + threadIdx.x,
@@ -156,36 +154,53 @@ void your_histogram_and_prefixsum(float* d_logLuminance,
 	const int size = 32;
 	const dim3 blockSize(size, size, 1);
 	const dim3 gridSize((int) numCols/size + 1, (int) numRows/size + 1, 1);
-	int shared_size = sizeof(float) * size * size;
+	int size_first = sizeof(float) * blockSize.x * blockSize.y;
+	int size_inter = sizeof(float) * gridSize.x * gridSize.y;
 	
 	cudaMalloc((void **) &d_inter, (numCols/size+1) * (numRows/size+1) * sizeof(float));
 	cudaMalloc((void **) &d_min, sizeof(float));
 	cudaMalloc((void **) &d_max, sizeof(float));
-
-	shared_reduce_min<<< gridSize, blockSize >>>(d_logLuminance,
-																							 numRows, numCols,
-																							 d_inter);
+	
+	reduce_min<<< gridSize, blockSize, size_first >>>
+		(d_logLuminance, numRows, numCols, d_inter);
 	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 	
-	shared_reduce_min<<< gridSize, blockSize >>>(d_inter,
-																							 numRows/size+1, numCols/size+1,
-																							 d_min);
+	reduce_min<<< (1,1,1), gridSize, size_inter >>>
+		(d_inter, numRows/size+1, numCols/size+1, d_min);
 	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
+	
 	// clean d_inter to use it again
-	checkCudaErrors(cudaMemset(*d_inter, 0, (numCols/size+1) * (numRows/size+1) * sizeof(float));
+	checkCudaErrors(cudaMemset(d_inter, 0, gridSize.x*gridSize.y*sizeof(float)));
+
 	
-	shared_reduce_max<<< gridSize, blockSize >>>(d_logLuminance,
-																							 numRows, numCols,
-																							 d_inter);
+	reduce_max<<< gridSize, blockSize, size_first >>>
+		(d_logLuminance, numRows, numCols, d_inter);
 	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 	
-	shared_reduce_max<<< gridSize, blockSize >>>(d_inter,
-																							 numRows/size+1, numCols/size+1,
-																							 d_max);
+	reduce_max<<< (1,1,1), gridSize, size_inter >>>
+		(d_inter, numRows/size+1, numCols/size+1, d_max);
 	cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
-									
+	
+	float h_max, h_min;
+	cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost);
+
+	min_logLum = h_min;
+	max_logLum = h_max;
+
+  // Step 2
+	float logLumRange = max_logLum - min_logLum;
+
+	// Step 3
+	unsigned int *h_histo = new unsigned int[numBins];
+  for (size_t i = 0; i < numBins; ++i) h_histo[i] = 0;
+
+	int d_histo;
+	cudaMalloc((void **) &d_histo, numBins * sizeof(unsigned int));
+	
+	checkCudaErrors(cudaFree(d_inter));
   //TODO
   /*Here are the steps you need to implement
     1) find the minimum and maximum value in the input logLuminance channel
@@ -197,5 +212,5 @@ void your_histogram_and_prefixsum(float* d_logLuminance,
        the cumulative distribution of luminance values (this should go in the
        incoming d_cdf pointer which already has been allocated for you)       */
 
-
+									
 }

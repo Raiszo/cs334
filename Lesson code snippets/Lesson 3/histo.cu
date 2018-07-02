@@ -82,6 +82,30 @@ void bin_counter(float *d_in,
 	atomicAdd(&(d_bins[bin_index]), 1);
 }
 
+__global__
+void scan(unsigned int *d_bins, const int numBins)
+{
+	extern __shared__ unsigned int s_bins[];
+
+	const int idx = threadIdx.x + blockDim.x * blockIdx.x;
+	const int tid = threadIdx.x;
+
+	s_bins[2*tid] = (2*idx < numBins) ? d_bins[2*tid] : 0;
+	__syncthreads();
+	s_bins[2*tid+1] = (2*idx+1 < numBins) ? d_bins[2*tid+1] : 0;
+	__syncthreads();
+	
+
+	// Do the small scan
+	int offset = 1;
+	for (unsigned int s = 1; s < blockDim.x/2; s <<= 1) {
+		if (tid < s) {
+			
+		}
+		s_bins[]
+	}
+}
+
 int main(int argc, char **argv)
 {
 	// TODO, use dynamic array :'v
@@ -113,7 +137,7 @@ int main(int argc, char **argv)
 		printf("\n");
 	}
 
-	const int numBins = 5;
+	const int numBins = 7;
 	unsigned int h_bins[numBins];
 	for (int i = 0; i<numBins; i++) h_bins[i] = 0;
 
